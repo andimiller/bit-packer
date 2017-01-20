@@ -37,5 +37,8 @@ object BitRecord extends App {
     println(s"the record's tail status is ${r("hasTail")}")
     println(s"the record's pin number is ${r("pin")}")
     //println(s"the record's missing attribute is ${r("nothing")}")
+    case class Dog(age: Int, hasTail: Boolean, pin: Int)
+    val dog = Generic[Dog].from(r.values)
+    println(dog)
   }
 }
