@@ -7,7 +7,9 @@ import scala.annotation.{StaticAnnotation, compileTimeOnly}
 import scala.meta.Term.{ApplyInfix, Arg}
 import scala.meta._
 
-class Bits[T](c: Codec[T]) extends StaticAnnotation {}
+class Bytes[T](c: Codec[T]) extends StaticAnnotation {}
+
+class Bits(i: Int) extends StaticAnnotation {}
 
 class GenerateBitPacking extends StaticAnnotation {
   inline def apply(defn: Any): Any = meta {
@@ -51,6 +53,54 @@ class GenerateBitPacking extends StaticAnnotation {
       case _ =>
         println(defn.structure)
         abort("@BitFormatted must annotate a class.")
+    }
+  }
+}
+
+class LongClass extends StaticAnnotation {
+  inline def apply(defn: Any): Any = meta {
+    defn match {
+      case cls @ Defn.Class(_, _, _, Ctor.Primary(_, _, paramss), template) =>
+        val params = paramss match {
+          case params :: Nil => params
+          case _ => abort("no, sorry")
+        }
+        // codecs
+        val parameters = params.map {
+          case Term.Param(mods, name, Some(dcltpe: Type), _) =>
+            val size = mods.collectFirst{
+              case Mod.Annot(q"$annot($value)") =>
+                println(s"$annot was set to $value on $name of type $dcltpe")
+                value.toString().toInt
+            }
+            val finalsize = size.getOrElse { dcltpe match {
+              case t"Int" => 32
+              case t"Long" => 64
+              case t"Boolean" => 1
+              }
+            }
+            (name, finalsize)
+        }
+        val getters = parameters.foldLeft(0, List.empty[Defn.Def]) { case ((offset, results), (name, size)) =>
+          val getter = q"def ${Term.Name(name.value)} = v >>> ${Term.Name(offset.toString)} << ${Term.Name((64-size-offset).toString)}"
+          println(getter)
+          (size+offset, results :+ getter)
+        }
+
+        val internals: Seq[Stat] = getters._2
+
+        q"""class ${cls.name}(val v: Long) extends AnyVal {
+            ..$internals
+            }
+
+            object ${Term.Name(cls.name.value)} {
+              // put stuff here
+            }
+         """
+
+      case _ =>
+        println(defn.structure)
+        abort("this must annotate a class.")
     }
   }
 }

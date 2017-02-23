@@ -9,7 +9,7 @@ import record._
 import shapeless.labelled.FieldType
 import shapeless.syntax.SingletonOps
 import syntax.singleton._
-import bitpacker.macros.{Bits, GenerateBitPacking}
+import bitpacker.macros.{Bytes, GenerateBitPacking}
 
 /**
   * Created by Andi on 20/01/2017.
@@ -38,9 +38,10 @@ object BitRecord extends App {
     println(s"the record's pin number is ${r("pin")}")
     //println(s"the record's missing attribute is ${r("nothing")}")
     @GenerateBitPacking
-    case class Dog(@Bits(uint3) age: Int, @Bits(bool) hasTail: Boolean, @Bits(uint12) pin: Int)
+    case class Dog(@Bytes(uint3) age: Int, @Bytes(bool) hasTail: Boolean, @Bytes(uint12) pin: Int)
     val dog = Generic[Dog].from(r.values)
     println(dog)
-    println(dog.codec.toCodec.decode(bin"0101010101010101"))
+    println(dog.toCodec.toCodec.decode(bin"0101010101010101"))
+    println(Generic[Dog])
   }
 }
