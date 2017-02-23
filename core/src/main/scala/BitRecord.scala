@@ -1,4 +1,4 @@
-package scodec.codecs.bitpacker
+package scodec.codecs.mine
 
 import scodec.{Codec, SizeBound}
 import scodec.codecs._
@@ -9,6 +9,7 @@ import record._
 import shapeless.labelled.FieldType
 import shapeless.syntax.SingletonOps
 import syntax.singleton._
+import bitpacker.macros.{Bits, GenerateBitPacking}
 
 /**
   * Created by Andi on 20/01/2017.
@@ -29,7 +30,6 @@ object BitRecord extends App {
   import ExtraCodecs._
 
   val format = ("age" ->> uint3) :: ("hasTail" ->> bool) :: ("pin" ->> uint12) :: HNil
-
   val result = format.values.toCodec.decode(bin"0101010101010101").map(x => x.value.zipWithKeys(format.keys))
 
   result.map { r =>
@@ -37,8 +37,10 @@ object BitRecord extends App {
     println(s"the record's tail status is ${r("hasTail")}")
     println(s"the record's pin number is ${r("pin")}")
     //println(s"the record's missing attribute is ${r("nothing")}")
-    case class Dog(age: Int, hasTail: Boolean, pin: Int)
+    @GenerateBitPacking
+    case class Dog(@Bits(uint3) age: Int, @Bits(bool) hasTail: Boolean, @Bits(uint12) pin: Int)
     val dog = Generic[Dog].from(r.values)
     println(dog)
+    println(dog.codec.toCodec.decode(bin"0101010101010101"))
   }
 }
